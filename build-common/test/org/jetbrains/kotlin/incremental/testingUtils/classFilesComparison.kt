@@ -18,6 +18,7 @@ package org.jetbrains.kotlin.incremental.testingUtils
 
 import com.intellij.openapi.util.io.FileUtil
 import org.jetbrains.kotlin.incremental.LocalFileKotlinClass
+import org.jetbrains.kotlin.incremental.md5
 import org.jetbrains.kotlin.load.kotlin.header.KotlinClassHeader
 import org.jetbrains.kotlin.protobuf.ExtensionRegistry
 import org.jetbrains.kotlin.serialization.DebugProtoBuf
@@ -139,9 +140,8 @@ private fun classFileToString(classFile: File): String {
 
     val annotationDataEncoded = classHeader?.data
     if (annotationDataEncoded != null) {
-        ByteArrayInputStream(BitEncoding.decodeBytes(annotationDataEncoded)).use {
-            input ->
-
+        val bytes = BitEncoding.decodeBytes(annotationDataEncoded)
+        ByteArrayInputStream(bytes).use { input ->
             out.write("\n------ string table types proto -----\n${DebugJvmProtoBuf.StringTableTypes.parseDelimitedFrom(input)}")
 
             if (!classHeader.metadataVersion.isCompatible()) {
@@ -150,12 +150,14 @@ private fun classFileToString(classFile: File): String {
 
             when (classHeader.kind) {
                 KotlinClassHeader.Kind.FILE_FACADE ->
-                    out.write("\n------ file facade proto -----\n${DebugProtoBuf.Package.parseFrom(input, getExtensionRegistry())}")
+                    out.write("\n------ ${classHeader.kind} proto -----\n${DebugProtoBuf.Package.parseFrom(input, getExtensionRegistry())}")
                 KotlinClassHeader.Kind.CLASS ->
                     out.write("\n------ class proto -----\n${DebugProtoBuf.Class.parseFrom(input, getExtensionRegistry())}")
                 KotlinClassHeader.Kind.MULTIFILE_CLASS_PART ->
                     out.write("\n------ multi-file part proto -----\n${DebugProtoBuf.Package.parseFrom(input, getExtensionRegistry())}")
-                else -> throw IllegalStateException()
+                KotlinClassHeader.Kind.SYNTHETIC_CLASS ->
+                    out.write("\n------ synthetic class proto bytes -----\n${bytes.md5()}")
+                else -> throw IllegalStateException("Unexpected class header")
             }
         }
     }

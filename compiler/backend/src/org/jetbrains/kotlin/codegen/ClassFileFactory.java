@@ -137,6 +137,16 @@ public class ClassFileFactory implements OutputFileCollection {
         return generators.containsKey(relativePath) ? new OutputClassFile(relativePath) : null;
     }
 
+    @Nullable
+    public byte[] getClassDataIfFullyGenerated(@NotNull String relativePath) {
+        OutAndSourceFileList classBuilder = generators.get(relativePath);
+        if (classBuilder instanceof ClassBuilderAndSourceFileList && ((ClassBuilderAndSourceFileList) classBuilder).classBuilder.isDone()) {
+            return classBuilder.asBytes(builderFactory);
+        }
+        return null;
+    }
+
+
     @NotNull
     @TestOnly
     public String createText() {

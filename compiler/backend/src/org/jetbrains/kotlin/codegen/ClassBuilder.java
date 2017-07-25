@@ -56,6 +56,8 @@ public interface ClassBuilder {
 
     void done();
 
+    boolean isDone();
+
     @NotNull
     ClassVisitor getVisitor();
 

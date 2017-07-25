@@ -44,6 +44,8 @@ public abstract class AbstractClassBuilder implements ClassBuilder {
 
     private String debugInfo;
 
+    private boolean isDone = false;
+
     public static class Concrete extends AbstractClassBuilder {
         private final ClassVisitor v;
 
@@ -116,6 +118,7 @@ public abstract class AbstractClassBuilder implements ClassBuilder {
         }
 
         getVisitor().visitEnd();
+        isDone = true;
     }
 
     @Override
@@ -158,5 +161,10 @@ public abstract class AbstractClassBuilder implements ClassBuilder {
     @Override
     public void addSMAP(FileMapping mapping) {
         fileMappings.add(mapping);
+    }
+
+    @Override
+    public boolean isDone() {
+        return isDone;
     }
 }

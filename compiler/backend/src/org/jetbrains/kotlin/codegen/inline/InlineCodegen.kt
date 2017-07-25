@@ -427,7 +427,11 @@ abstract class InlineCodegen<out T: BaseExpressionCodegen>(
             val methodId = MethodId(DescriptorUtils.getFqNameSafe(functionDescriptor.containingDeclaration), asmMethod)
             val directMember = getDirectMemberAndCallableFromObject(functionDescriptor)
             if (!isBuiltInArrayIntrinsic(functionDescriptor) && directMember !is DeserializedCallableMemberDescriptor) {
-                return sourceCompilerForInline.doCreateMethodNodeFromSource(functionDescriptor, jvmSignature, callDefault, asmMethod)
+                val implementationOwner = state.typeMapper.mapImplementationOwner(functionDescriptor)
+                val classDataIfGenerated: ByteArray? = state.factory.getClassDataIfFullyGenerated(implementationOwner.internalName + ".class")
+
+                return classDataIfGenerated?.let { getMethodNode(classDataIfGenerated, asmMethod.name, asmMethod.descriptor, implementationOwner) } ?:
+                       sourceCompilerForInline.doCreateMethodNodeFromSource(functionDescriptor, jvmSignature, callDefault, asmMethod)
             }
 
             val resultInCache = state.inlineCache.methodNodeById.getOrPut(methodId
@@ -460,7 +464,7 @@ abstract class InlineCodegen<out T: BaseExpressionCodegen>(
             if (isBuiltInArrayIntrinsic(callableDescriptor)) {
                 val classId = classId
                 val bytes = state.inlineCache.classBytes.getOrPut(classId) { bytecode }
-                return getMethodNode(bytes, asmMethod.name, asmMethod.descriptor, classId.asString())
+                return getMethodNode(bytes, asmMethod.name, asmMethod.descriptor, AsmUtil.asmTypeByClassId(classId))
             }
 
             assert(callableDescriptor is DeserializedCallableMemberDescriptor) { "Not a deserialized function or proper: " + callableDescriptor }
@@ -474,7 +478,7 @@ abstract class InlineCodegen<out T: BaseExpressionCodegen>(
                 throw IllegalStateException("Couldn't find declaration file for " + containerId)
             }
 
-            val methodNode = getMethodNode(bytes, asmMethod.name, asmMethod.descriptor, containerId.asString()) ?: return null
+            val methodNode = getMethodNode(bytes, asmMethod.name, asmMethod.descriptor, AsmUtil.asmTypeByClassId(containerId)) ?: return null
 
             // KLUDGE: Inline suspend function built with compiler version less than 1.1.4/1.2-M1 did not contain proper
             // before/after suspension point marks, so we detect those functions here and insert the corresponding marks
